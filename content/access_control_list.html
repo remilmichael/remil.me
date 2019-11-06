@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="keywords" content="linux file permissions,acl,rwx">
+<title>ACL</title>
+<link rel="stylesheet" type="text/css" href="../lib/css/sub.css">
+</head>
+<body>
+<h3>Access Control Lists</h3>
+    <ul>
+        <li>It is basically a list consisting of permissions(rwx) associated with a file or directory to allow or restrict user(s) or group(s) while accessing it.</li>
+        <li>ACL consits of three entries</li>
+        <ol>
+            <li><b>ACL entry tag</b>
+                <section>
+                    There are six types of ACL entry tags:-
+                    <table style="margin-top: 5px; margin-bottom: 5px;">
+                        <tr>
+                          <th>Tag</th>
+                          <th>Purpose</th>
+                        </tr>
+                        <tr>
+                            <td>ACL_USER_OBJ</td>
+                            <td>Denotes access right for the file owner(user)</td>
+                        </tr>
+                        <tr>
+                            <td>ACL_USER</td>
+                            <td>Denotes access rights for those users identified by entry's qualifier</td>
+                        </tr>
+                        <tr>
+                            <td>ACL_GROUP_OBJ</td>
+                            <td>Denotes access rights for file's owner group</td>
+                        </tr>
+                        <tr>
+                            <td>ACL_GROUP</td>
+                            <td>Denotes access rightd for those groups identified by entry's qualifier</td>
+                        </tr>
+                        <tr>
+                            <td>ACL_MASK</td>
+                            <td>Denotes max. rights can be granted by entries. Mask is not applicable for file owners and others.</td>
+                        </tr>
+                        <tr>
+                            <td>ACL_OTHER</td>
+                            <td>Denotes access rights for others(who doesn't match with any entries)</td>
+                        </tr>
+                    </table>
+                </section>
+            </li>
+            <li><b>ACL entry qualifier (optional)</b>
+            <section>
+                This usually represents the identifier of user or group, it can be name or ID.
+            </section>
+            </li>
+            <li><b>Set of permissions (rwx)</b>
+                <section>
+                    Represents the rwx permission.
+                </section>
+            </li>
+        </ol>
+        <h4>Valid ACL</h4>
+        <ul>
+                <li>Contains exactly one entry with each of the ACL_USER_OBJ, ACL_GROUP_OBJ and ACL_OTHER and other tag types may appear zero or more times.</li>
+                <li>Exactly one entry of ACL_MASK must be there, if there exists ACL_GROUP or ACL_USER tag types.</li>
+        </ul>
+        <li>ACL entries has correspondence with permission bits, since it's a superset of permissions. Any change in the permission bits will reflect ACL entries and vice versa.</li>
+        <table style="margin-top: 5px; margin-bottom: 5px;">
+            <tr>
+            <th>Permission bit</th>
+            <th>ACL entry</th>
+            </tr>
+            <tr>
+                <td>Owner permission</td>
+                <td>ACL_USER_OBJ</td>
+            </tr>
+            <tr>
+                <td>Group permission</td>
+                <td>ACL_GROUP_OBJ (if ACL_MASK is not set)</td>
+            </tr>
+            <tr>
+                <td>Group permission</td>
+                <td>ACL_GROUP (if ACL_MASK is set)</td>
+            </tr>
+            <tr>
+                <td>Other permission</td>
+                <td>ACL_OTHER_OBJ</td>
+            </tr>
+        </table>
+        <li>If default ACL is set for a directory, new objects created inside the directory with inherit the ACL value from its parent directory and ACL entries are modified in accordance with the file permission bits and if it is not set, file is assigned with ACL entries ACL_USER_OBJ, ACL_GROUP_OBJ and ACL_OTHER also ACL masks are modified in accordance with file permission bits.</li>
+        <li>Two types of ACL text forms :- Long and Short. Both forms have three colon separated fields, entry tag type (user, group, mask, other), entry qualifier (name or ID), access permissions (rwx).</li>
+        <li>Use <b>getfacl</b> to list the ACL entries for a directory or a file.</li>
+        <li>Refer <b>ACL manual</b> for access check algorithm.</li>
+        <h4>Significance of ACL_MASK</h4>
+        <ul>
+            <li>Determine the maximum rights for ACL_USER(users other than the file owner), ACL_GROUP_OBJ(group owning the file) and ACL_GROUP(all other groups other than the owning group).</li>
+            <li>Mask can be used to alter the permissions as a whole instead of assigning them individually to each user.</li>
+            <li>Mask can override all permissions which are set individually for each user or group. For example even if an ACL entry like <code>user:george:rwx</code> exists (where "george" is not the file owner), where the ACL_MASK entry is set as <code>mask::rx</code>, the user "george" won't be able to write into the file ("create, rename, delete incase of directory").</li>
+            <li>ACL_MASK is automatically updated when other ACL entries' permissions are updated (unless <b>--no-mask</b> is specified). So it is advised to recheck the mask after such updations.</li>
+        </ul>
+    </ul>
+    </body>
+    </html>

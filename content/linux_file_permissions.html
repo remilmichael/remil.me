@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="keywords" content="linux file permissions,rwx">
+<title>Linux file permissions</title>
+<link rel="stylesheet" type="text/css" href="../lib/css/sub.css">
+</head>
+<body>
+    <h2 id="main-title">Permission bits with a folder in Linux</h2>
+<div>
+    <h4 style="padding-top: 10px;">When applied to a directory</h4>
+    <ul>
+        <li>Read bit : Lists files in directory.</li>
+        <li>Write bit : Can add/remove links(files) in the directory.</li>
+        <li>Execute bit : Can "cd" into the directory.</li>
+    </ul>
+
+    <h4>Setting Read permission without execute</h4>
+    <ul>
+        <li>Can view/list file names.</li>
+        <li>Won't be showing any other details of files such as size, permissions, owner etc., instead shows question marks (?)</li>
+    </ul>
+    <h4>Setting Write permission without write</h4>
+    <ul>
+        <li>Can modify existing file contents.</li>
+        <li>Can't create/delete files inside that directory.</li>
+    </ul>
+    <h4>Setting Execute permission without read</h4>
+    <ul>
+        <li>Can't list files inside the directory.</li>
+        <li>Can "cd" into the directory</li>
+        <li>Can view file contents, and write into it (if write is set) if the <b>file name is already known.</b></li>
+    </ul>
+    <h4>Setting Execute permission without write</h4>
+    <ul>
+        <li>Can't modify files inside the directory.</li>
+        <li>Can't create/remove files in the directory.</li>
+        <li>Can "cd" into the directory</li>
+        <li>Can list files (if read is set)</li>
+    </ul>
+</div>
+<hr>
+<div>
+    <h3>X (Uppercase) flag in file mode bits.</h3>
+    <ul>
+        <li>To recursively set executable flag for the sub directories created in the current directory automatically, without applying it to the ordinary files.</li>
+        <li>e.g. <code>chmod -R u=rwX, g=rwX, o=rX mydirectory/</code></li>
+        <li>If used x (lowercase) then ordinary files thus created will be having execute permission along with the folders.</li>
+    </ul>
+</div>
+<hr>
+<div>
+    <h4>Sticky bit  (Restricted deletion flag)</h4>
+    <ul>
+        <li>To restrict deletion or renaming of a file where rwx permissions are set for all the users.</li>
+        <li>By setting this bit, only the file owner can perform deletion or renaming on that particular file.</li>
+        <li><code>&gt;chmod +t &lt;file&gt;</code></li>
+        <li>"-t" to remove sticky bit.</li>
+        <li>Same applies to directories also.</li>
+    </ul>
+    <hr>
+    <h3>SETUID and SETGID bits</h3>
+    <h4 style="padding-top: 10px;">SETUID bit</h4>
+    <ul>
+        <li>Indicated with 's' flag within user/owner field.</li>
+        <li>e.g. <br>
+        <code>&gt;ls -lhA $(which passwd)</code><br>
+        <code>-rwsr-xr-x. 1 root root 43K Feb  2  2019 /usr/bin/passwd</code>
+        </li>
+        <li>Allows a process or a program to elevate its privileges to that of the owner of that particular program(file) by changing its EUID or EGID during its execution. This is done with the help of <span class="emph">setuid()</span> function. Program usually change its EUID or EGID if it requires more privileges than the user who executed it, which is considered as a best security practice.</li>
+        <li>"passwd" can be executed by any user with the permissions as that of root user (above example)</li>
+        <li><b>Careful while editing it, has security implications.</b></li>
+        <li><code>&gt;chmod u+s &lt;file&gt;</code></li>
+        <li>SETUID has no effect on directories.</li>
+    </ul>
+    <h4>SETGID bit</h4>
+    <ul>
+        <li>Has effect on both files and directories</li>
+        <li><b>On files: </b>Allows to elevate the privileges of program(file) to that of a group which owns the file, when the process requires more permissions than that of a group who executed it.</li>
+        <li><b>On directory: </b>Ownership of files created inside the directory will be same as that of parent, instead of the owner or user who created the file.</li>
+        <li><code>&gt;chmod g+s &lt;file&gt;</code></li>
+    </ul>
+    <p style="padding-left: 17px;">"+s" to set uid or gid and "-s" for unsetting them.</p>
+    <hr>
+    <h4>RUID, EUID, SUID</h4>
+    <ul>
+        <li>RUID : Real User ID</li>
+        <li>Represents the owner of a process or who executed the process, and usually it never changes.</li>
+        <li>EUID : Effective User ID</li>
+        <li>When a user executes a file with <span class="emph">setuid</span> bit set and the process requires more privileges than the user who executed it, then it changes its EUID to RUID of the file owner, after executing the privileged part it changes it EUID back to RUID.</li>
+        <li>SUID: Saved User ID</li>
+        <li>To execute non-privileged programs, while executing as privileged user, its EUID is stored in SUID & takenback from SUID on completion of the unprivileged task and switched back to privileged account.</li>
+        <li>Same rule is applied fort RGID, EGID, SGID which are corresponding group IDs.</li>
+        <li>To view all IDs of process view the status file of each process<br>
+            <code>less /proc/&lt;pid&gt;/status</code><br>
+            Refer "man proc" for further details.
+        </li>
+    </ul>
+</div>
+</body>
+</html>
+

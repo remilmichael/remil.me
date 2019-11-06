@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="keywords" content="syslog,rsyslog,journalctl">
+<title>Journal control</title>
+<link rel="stylesheet" type="text/css" href="../lib/css/sub.css">
+</head>
+<body>
+    <h3>journalctl</h3>
+<p>
+    <ul>
+        <li>Used to query the systemd journal written by systemd-journald.service.</li>
+        <li>Stored persistently at /var/log/journal (if enabled) or at /run/log/journal/ (lost during reboot). To change journal location, use <code>Storage=</code> in <b>journald.conf</b></li>
+        <li>All outputs from a systemd service (to stdout and stderr) are stored to the journal automatically.</li>
+        <li>Fields prefixed with underscore("_") are trusted fields(implicitly added)</li>
+        <li>Multiple fields can be specified(logical AND, if "+" is not specified) separated by space or same field with different values(logical OR).</li>
+        <li>Refer <b>man systemd.journal-fields</b> for different fields and their descriptions.</li>
+        <li>e.g.To list logs related to user ID : 1000
+            <div class="code eg">
+                journalctl _UID=1000
+            </div>
+        </li>
+        <li>The fields <code>_COMM _EXE _CMDLINE </code>to filter logs according to name, executable path, command line of process.</li>
+        <li><code>_TRANSPORT</code> to filter based on how the entry was received. Possible values are : audit, driver, stdout, kernel, syslog, journal.</li>
+        <li>Use "-p" to list all logs of priority given and above. Refer manual for various priorities.</li>
+        <li>Use "-b" to filter logs based on boot. "0" is the current boot(if it's on the current machine). Or use _BOOT_ID</li>
+        <li>To output the logs in different formats like json, json-pretty use option "-o".</li>
+        <li>To remove archived file use <code>--vacuum-size=</code> {K, M, T} or use <code>--vacuum-time=</code> to remove logs based on time {s, m, h, days, weeks, months, years}.</li>
+    </ul>
+</p>
+</body>
+</html>
