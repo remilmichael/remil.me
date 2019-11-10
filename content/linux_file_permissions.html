@@ -81,6 +81,7 @@
         <li><b>On directory: </b>Ownership of files created inside the directory will be same as that of parent, instead of the owner or user who created the file.</li>
         <li><code>&gt;chmod g+s &lt;file&gt;</code></li>
     </ul>
+    <p style="padding-left: 17px;">If <b>nosuid</b> flag is set while mounting a device, then privilege escalations are not possible which is possible through SETUID or SETGID bit.</p>
     <p style="padding-left: 17px;">"+s" to set uid or gid and "-s" for unsetting them.</p>
     <hr>
     <h4>RUID, EUID, SUID</h4>
@@ -94,10 +95,10 @@
         <li>Same rule is applied fort RGID, EGID, SGID which are corresponding group IDs.</li>
         <li>To view all IDs of process view the status file of each process<br>
             <code>less /proc/&lt;pid&gt;/status</code><br>
-            Refer "man proc" for further details.
+            Refer "<b>man proc</b>" <code>/proc/[pid]/status</code> for further details.
         </li>
+        <li>Verify the concept with this <a href="https://github.com/r3mtm/misc/blob/master/uid_check.c">program</a></li>
     </ul>
 </div>
 </body>
 </html>
-

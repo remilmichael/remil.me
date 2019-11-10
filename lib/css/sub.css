@@ -23,12 +23,30 @@ body{
     line-height: 1.4;
 }
 
-table{
-    border-collapse: collapse;
-}
-
-table, th, td{
+table.normal, th{
     border: 1px solid black;
     text-align: center;
+    border-collapse: collapse;
+}
+.normal td{
+    border: 1px solid black;
     padding: 5px 5px 5px 5px;
+}
+
+table.woborder{
+    text-align: left;
+    border-collapse: collapse;
+    border: 1px solid black;
+}
+
+.woborder td{
+    border-collapse: collapse;
+    padding: 5px 5px 5px 5px;
+}
+
+blockquote{
+    background-color: #ddf0ff;
+    color: brown;
+    padding: 5px 2px 5px 10px;
+    border-left: 2px solid green;
 }

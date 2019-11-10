@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="keywords" content="linux file permissions,rwx, capabilities">
+<title>Capabilities</title>
+<link rel="stylesheet" type="text/css" href="../lib/css/sub.css">
+</head>
+<body>
+<h3>An alternative approach to setuid or setgid bits. Capabilities</h3>
+<p>A feature started off with kernel 2.2, which divides the privileges associated with a superuser or an equivalent into distinct components(capabilities), which are a per-thread attribute, so that the process or thread won't bypass all kernel permissions checks unnecessarily, i.e. to effectively reduce the damage caused if any of the capabilities are compromised. Refer "<b>man capabilities</b>" for capabilities list.</p>
+<ul>
+    <li>Inorder to fully implement capabilities, kernel must check whether the thread has required capability, also system calls should be provided to change and retrieve a thread's capabilities, plus the filesystem should support attaching capabilities to an executable.</li>
+    <li>If possible avoid "<b>CAP_SYS_ADMIN</b>", which constitutes most of the capabilities.</li>
+</ul>
+<p>A thread has four capability sets containing zero or more capabilities.</p>
+<ul style="list-style-type: none;">
+    <li>
+        <b>Permitted set</b> (thread)
+        <table class="woborder">
+            <tr>
+                <td>A <u>limiting superset</u> for</td>
+                <td> : </td>
+                <td><u>effective</u> capabilities</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td> : </td>
+                <td>capabilities that may be added to <u>inheritable</u> set(for threads without CAP_SETPCAP capability)</td>
+            </tr>
+        </table>
+    </li>
+    <li style="padding-top: 10px;">Threads with CAP_SETPCAP capability can set any capability to the inheritable set of a thread (P(inheritable)). Also dropped capabilities from this set can't be regained unless it execve a program with such capabilities or a set-user-ID-root program.</li>
+    <li style="padding-top: 20px;">
+        <b>Inheritable set</b> (thread)
+        <table class="woborder">
+            <tr>
+                <td>If running as <b>root</b> user</td>
+                <td> : </td>
+                <td>Capabilities are <b>preserved</b> across <b>execve</b> (i.e. before and after calling execve)</td>
+            </tr>
+            <tr>
+                <td>Else if running as non-root user</td>
+                <td> : </td>
+                <td>Capabilities are <b>not</b> preserved across <b>execve</b>. Use <b>ambient</b> set for such cases.</td>
+            </tr>
+            <tr>
+                <td>If inheriable bits are set for the <b>file</b> inheritable set</td>
+                <td> : </td>
+                <td>Capabilities can be added to <b>permitted</b> set. <br>i.e. P(inheritable) <b>&</b> F(inheritable)</td>
+            </tr>
+        </table>
+    </li>
+    <li style="padding-top: 10px;">Inheritable capabilities remains inheritable when executing a program.</li>
+    <li style="padding-top: 20px;">
+        <b>Effective set</b> (thread)
+        <table class="woborder">
+            <tr>
+            <td>This is the only capability set where kernel performs permission checks for a thread. This set holds the capabilities that a thread currently has. Also capabilities can be dropped after a particular operation.</td>
+            <tr>
+        </table>
+    </li>
+    <li style="padding-top: 20px;">
+        <b>Ambient set</b> (thread) - [since Linux 4.3]
+        <table class="woborder">
+            <tr>
+                <td colspan="3">
+                    Set of capabilities that are preserved across an <b>execve</b> while running a program that is <b>unprivileged</b>. Ambient capabilities are added to <b>permitted</b> and <b>effective</b> set on calling execve, also ambient capabilities are cleared when the file is privileged (setuid or setgid or setcap).
+                </td>
+            </tr>
+            <tr>
+                <td>Thumb rule</td>
+                <td>:</td>
+                <td>A capability can <b>only</b> be ambient iff it is both <b>permitted</b> and <b>inhertiable</b>, and is lowered if any of the corresponding permitted or inherited capabilities are lowered.</td>
+            </tr>
+        </table>
+    </li>
+    <li style="padding-top: 15px;"><em><u>Reason to introduce Ambient set</u></em></li>
+    <p>Capability evolution rules :</p>
+    <table class="normal" style="text-align: left;">
+        <tr>
+            <th>Before ambient set</th>
+            <th>After ambient set</th>
+        </tr>
+        <tr>
+            <td>P'(effective) = F(effective) ? P'(permitted) ? 0</td>
+            <td>P'(effective) = F(effective) ? P'(permitted) ? P'(ambient)</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>P'(ambient) = (file is privileged) ? 0 : P(ambient)<br> privileged = [setuid or setgid or setcap]</td>
+        </tr>
+        <tr>
+            <td>P'(permitted) = F(inheritable) & P(inheritable) | (cap_bset & F(permitted))</td>
+            <td>P'(permitted) = F(inheritable) & P(inheritable) | (cap_bset & F(permitted)) | P'(ambient)</td>
+        </tr>
+        <tr>
+            <td>P'(inheritable) = P'(inheritable)</td>
+            <td>P'(inheritable) = P'(inheritable)</td>
+        </tr>
+    </table>
+</ul>
+</body>
+</html>
