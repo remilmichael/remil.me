@@ -93,7 +93,7 @@
         <h4>Significance of ACL_MASK</h4>
         <ul>
             <li>Determine the maximum rights for ACL_USER(users other than the file owner), ACL_GROUP_OBJ(group owning the file) and ACL_GROUP(all other groups other than the owning group).</li>
-            <li>Mask can be used to alter the permissions as a whole instead of assigning them individually to each user.</li>
+            <li>Mask can be used to limit the permission as a whole instead of assigning them individually to each user or group entry.</li>
             <li>Mask can override all permissions which are set individually for each user or group. For example even if an ACL entry like <code>user:george:rwx</code> exists (where "george" is not the file owner), where the ACL_MASK entry is set as <code>mask::rx</code>, the user "george" won't be able to write into the file ("create, rename, delete incase of directory").</li>
             <li>ACL_MASK is automatically updated when other ACL entries' permissions are updated (unless <b>--no-mask</b> is specified). So it is advised to recheck the mask after such updations.</li>
         </ul>
