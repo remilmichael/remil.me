@@ -50,3 +50,7 @@ blockquote{
     padding: 5px 2px 5px 10px;
     border-left: 2px solid green;
 }
+
+a:hover {
+    background-color: yellowgreen;
+}

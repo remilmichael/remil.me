@@ -101,20 +101,42 @@
     </table>
     <li style="padding-top: 5px;">Before ambient sets were introduced a non-user couldn't run an executable with capabilities set, since F(inheritable) = 0. Now it can assigned to the ambient set which can perform the operation which was meant to be done by the inheritable set.</li>
     <h3>File capabilities</h3>
-    <li><b>Permitted</b> : </li>
+    <li></li><b>Permitted</b> set (forced) : Capabilities which are automatically applied to the thread.</li>
+    <li><b>Inheritable</b> set (allowed) : This set is <b>AND</b>ed with thread's inheritable set, which are enabled in the permitted set of thread after execve(). A sample program : Refer <a href="https://github.com/r3mtm/misc/tree/master/linux_capabilities/cap_inheritable">here</a>. <br> <blockquote>P'(permitted) = F<sub>new</sub>(inheritable) & P(inheritable).</blockquote></li>
+    <li><b>Effective</b> set : It is a bit, instead of a set.</li>
     <hr style="margin-top: 15px;">
     <li style="padding-top: 10px;"><b style="color: green;">Purpose of <i>process</i> permitted and effective set</b> : This set can act like a buffer to store all capabilities when that particular capability is not in use (i.e. if that particular capability is not in the <b>effective</b> set) by a process. Dropping a capability from effective set is analogous to the temporarily changing the EUID from 0 to non-zero ID, whereas the SUID holds the "0" while EUID is set non-zero. Here the EUID can be compared to the effective set and SUID to permittive set.  Also permitted set acts as an upper bound of capabilities. </li> 
     <li style="padding-top: 10px;"><b style="color: green;">Purpose of <i>file</i> permitted set and effective bit</b> : File permitted set acts a set of capbilities which that executable can attain while it is being executed (by follwing the transformation of capabilities algorithm). Whereas the effective bit is useful for <b>capability-dumb</b> programs, where the capabilities in the permitted set will be automatically added to effective set, for capability aware program, it internally make capget() and capset() calls to add it to the effective set. In case of <b>capability aware</b> programs, it can be made useful; without setting this bit, after an exec() call the new process won't be having any capabilities <b>initially </b>, the parent process had, which need to be acquired by system calls.</li>
 </ul>
 
-<p style="color: red; font-size: 19px; font-weight: bold;">RANDOM stuffs. (Men at work...)</p>
-
+<p>
+    <h3>Capability bounding set</h3>
+    It is a per-process attribute since Linux 2.6.25, where before it was a system-wide attribute. This set is ANDed with file permitted set. This is a limiting superset for capabilities than can be added to process's inheritable set (can't add from permitted set without this). 
+</p>
+<hr>
 <p>
     If a set-user-ID-root program is executed (or if real/effective uid is 0) : All the <b>file</b> capabilities are enabled (i.e. both <b>file</b> inheritable and <b>file</b> permitted sets are filled with ones), also <b>effective bit</b> is set to 1. This is done to support legacy mode of execution (legacy fixup mode). When program switches it ID from non-zero to 0, then its effective set is cleared.
 </p>
 
 <p>Any capabilities given in the <b>file permitted set</b> can be set to <i>inheritable set</i> and <i>permitted set</i> of a process, using the <code>cap_set_flag()</code> and <code>cap_set_proc()</code> functions.</p>
 
+<p>
+    <h3>Using capabilities without file capability support</h3>
+    <ol>
+        <li>Execute the program as root or EUID with 0 (all capabilities except CAP_SETPCAP are granted)</li>
+        <li>On process startup, drop all capabilities from effective set and all unnecessary capabilities from permittive set using <i>libcap</i> API.</li>
+        <li>Set the <i>SECBIT_KEEP_CAPS</i> flag or use <i>prctl() PR_SET_KEEPCAPS</i> so that the capabilities won't dropped on changing to nonzero UID.</li>
+        <li>Set all UIDs to nonzero value (requires SET_SETUID capability for this) and use libcap API to raise or drop capabilities.</li>
+    </ol>
+    Sample <a href="https://github.com/r3mtm/misc/blob/master/linux_capabilities/without_file_cap.c">program</a>.<br>
+    NOTE : A process can't keep capabilities on effective set, without having that particular capability on the permitted set (can't be dropped from the permitted set).
+</p>
+
+<h3>References and footnotes</h3>
+<ul>
+    <li>To use libcap API on debian systems, install <i>libcap-dev</i> and for RHEL based OS use <i>libcap-devel</i>.</li>
+    <li>Sample programs : <a href="https://github.com/r3mtm/misc/tree/master/linux_capabilities">Source code</a></li>
+</ul>
 
 </body>
 </html> 
