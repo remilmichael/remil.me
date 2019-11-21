@@ -99,7 +99,7 @@
             <td>P'(inheritable) = P'(inheritable)</td>
         </tr>
     </table>
-    <li style="padding-top: 5px;">Before ambient sets were introduced a non-user couldn't run an executable with capabilities set, since F(inheritable) = 0. Now it can assigned to the ambient set which can perform the operation which was meant to be done by the inheritable set.</li>
+    <li style="padding-top: 5px;">Ambient set is just like inheritable set, except the fact that all the capabilities in the ambient set of the parent process (caller of <i>execve()</i>) are copied to child process, iff the process/program is not privileged, in the case of inheritable set capabilities in this set won't be copied to child process if the process <b>not privileged</b>, i.e. it needs to be <b>privileged</b>. So ambient set is an inheritable set for the non-privileged processes.</li>
     <h3>File capabilities</h3>
     <li></li><b>Permitted</b> set (forced) : Capabilities which are automatically applied to the thread.</li>
     <li><b>Inheritable</b> set (allowed) : This set is <b>AND</b>ed with thread's inheritable set, which are enabled in the permitted set of thread after execve(). A sample program : Refer <a href="https://github.com/r3mtm/misc/tree/master/linux_capabilities/cap_inheritable">here</a>. <br> <blockquote>P'(permitted) = F<sub>new</sub>(inheritable) & P(inheritable).</blockquote></li>
