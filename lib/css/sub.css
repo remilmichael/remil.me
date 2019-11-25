@@ -49,6 +49,15 @@ blockquote{
     color: brown;
     padding: 5px 2px 5px 10px;
     border-left: 2px solid green;
+    line-height: 2;
+}
+
+.note{
+    color: blue;
+}
+
+ul#egs li {
+    margin-bottom: 10px;
 }
 
 a:hover {

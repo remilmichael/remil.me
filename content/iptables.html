@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="keywords" content="linux,ip,ipv4,ipv6,iptables,ip6tables">
+<title>IPTABLES</title>
+<link rel="stylesheet" type="text/css" href="../lib/css/sub.css">
+</head>
+<body>
+<h3>iptables</h3>
+<ul>
+    <li>To setup, maintain, inspect -- ipv4, ipv6 packet filter rules</li>
+    <li>Have several tables -- each contains -- chains (built-in or user-defined).</li>
+    <li>The <i>filter</i> is the default table used for rules. Only <i>nat, filter</i> are used for almost all configurations.</li>
+    <li>There are several chains available, such as 
+        <ul>
+            <li><b>INPUT</b> : For packets destined for local sockets.</li>
+            <li><b>OUTPUT</b> : For packets generated within the host or machine which is destined for outside the machine.</li>
+            <li><b>FORWARD</b> : For packets to be routed through the box (machine).</li>
+            <li><b>PREROUTING</b> : For altering packets as soon as they come in.</li>
+            <li><b>POSTROUTING</b> : For altering packets just before they leave the machine.</li>
+        </ul>
+    </li>
+    <li>Refer man <b>iptables-extension</b> for more config. extensions.</li>
+    <li>All the supported protocols are saved in <i>/etc/protocols</i>.</li>
+    <li>For persistent saving of rules change the value of these options to "yes" (on RHEL based OS).
+        <blockquote>
+            IPTABLES_SAVE_ON_STOP="yes"<br>
+            IPTABLES_SAVE_ON_RESTART="yes"
+            <br><br>
+            Execute : <br>
+            #service iptables save
+        </blockquote>
+        OR
+        <blockquote>
+            #iptables-save &gt; &lt;filename&gt;<br><br>
+            <i>restore from file using using user own systemd service.</i><br><br>
+            #iptables-restore &lt; &lt;filename&gt;
+        </blockquote>
+        <div class="note">This will update the file <i>/etc/sysconfig/iptables</i> enabling persistent rules.</div>
+    </li>
+    
+</ul>
+<h3>Examples</h3>
+<ul id="egs">
+    <li>To allow ping <i>only</i> from within the LAN (192.168.0.0/24 in this case)
+    <blockquote>
+        #iptables -t filter -A INPUT -p icmp -s 192.168.0.0/24 -j ACCEPT<br>
+        #iptables -t filter -A INPUT -p icmp ! -s 192.168.0.0/24 -m conntrack --ctstate NEW -j DROP
+    </blockquote>
+    <div class="note">The "!" inverts the sense (i.e. except 192.168.0.0/24 in this case). <i>conntrack</i> is an extension module to track the state of the packet/connection, <b>NEW</b> specifies a connection/packet which is not a part of previous connection/packet. This extension is necessary in this case, else pinging an external host won't be possible i.e. ICMP replies from the pinged host will be dropped.</div>
+    </li>
+    <li>
+        To block incoming UDP packets/connections (which are not initiated by the machine) except DNS.
+        <blockquote>
+            iptables -t filter -A INPUT -p udp ! --sport 53 -m conntrack --ctstate NEW -j DROP
+        </blockquote>
+    </li>
+</ul>
+</body>
+</html>
