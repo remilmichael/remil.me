@@ -83,6 +83,7 @@
     </ul>
     <p style="padding-left: 17px;">If <b>nosuid</b> flag is set while mounting a device, then privilege escalations are not possible which is possible through SETUID or SETGID bit.</p>
     <p style="padding-left: 17px;">"+s" to set uid or gid and "-s" for unsetting them.</p>
+    <p style="padding-left: 17px;">The <i><code>setuid()</code></i> function when executed as root it sets RUID, EUID and SUID, whereas if it is executed as a non-root user it only sets EUID.</p>
     <hr>
     <h4>RUID, EUID, SUID</h4>
     <ul>

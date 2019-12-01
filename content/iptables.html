@@ -22,6 +22,7 @@
         </ul>
     </li>
     <li>Refer man <b>iptables-extension</b> for more config. extensions.</li>
+    <li>Packets are matched with the rules in chain until they hit the following <i>terminating</i> targets:- <code>ACCEPT</code>,<code>DROP</code>, <code>REJECT</code> or <code>RETURN</code>. So multiple rules can be specified with same criteria until it hit one of these targets.</li>
     <li>"mac" extension can be used to match source MAC address, which is valid only for ethernet devices. Only PREROUTING, FORWARD, INPUT chains make sense to use with this extension.</li>
     <li>Extension "quota" can be used to implement network quotas. The value is decreased on each packet, the condition holds true until it reaches zero.
         <blockquote>
@@ -63,7 +64,6 @@
                 #iptables ... -m u32 --u32 "0 & 0xFF = 0x100:0xFFFF" ...
             </blockquote>
             <div class="note"><p>The <b>total length</b> field (16-bits) of an IP header defines the total length, i.e. 2-3 bytes of IP header.</p>
-                <p>
                     Bytes 0-3 are ANDed with the value 0xFF, which clears bytes 0 and 1.
                     <table style="border: none; padding: 3px;">
                         <tr>
@@ -88,13 +88,10 @@
                             <td>yyyyyyyy</td>
                         </tr>
                     </table>
-                </p>
-                <p>
                     This is same as using the <b>length</b> module.
                     <blockquote>
                         #iptables ... -m length --length 256:65535 ...
                     </blockquote>
-                </p>
             </div>
         </li>
         <li>
@@ -105,7 +102,7 @@
             <div class="note">
                 <p>The size of the IP header is given by the <b>Header Length</b> field, which specifies how many 4 byte words exists. For instance, if it is 5, then the header length would be 5 x 4 bytes = 20 bytes. </p>
                 <p>
-                    "0 >> 22" --> Innorder to get the second-half of the 0<sup>th</sup> byte, it is right shifted 22 times (shifting right 22 times instead of 24 is same as multiplying it by 4. i.e. Header length x 4 bytes), which is ANDed with 0x3C to obtain that 4 bits alone. The value is then used as an offset for the "@" operator to jump to next header.
+                    "0 >> 22" --> Innorder to get the second-half of the 0<sup>th</sup> byte, it is then right shifted 22 times (shifting right 22 times instead of 24 is same as multiplying it by 4. i.e. Header length x 4 bytes), which is ANDed with 0x3C to obtain that 4 bits alone. The value is then used as an offset for the "@" operator to jump to next header.
                 </p>
                 <p>
                     The "@" operator is then used to move into the new offset. The new 0<sup>th</sup> byte is shifted right 24 times to remove bytes 1,2,3 and get the 0<sup>th</sup> byte alone which is matched with the value 0.
@@ -150,13 +147,6 @@
         </blockquote>
     </li>
     <li>
-        To redirect traffic on port 80 to a different port (8080)
-        <blockquote>
-            #iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
-        </blockquote>
-        <div class="note">Assign CPU using the cpu extension, i.e. -m cpu --cpu &lt;cpu-no&gt;</div>
-    </li>
-    <li>
         Accept all packets from own device, i.e. via loopback interface.
         <blockquote>
             #iptables -A INPUT -i lo -j ACCEPT
@@ -165,11 +155,13 @@
     <li>
         To accept only a specified number of ping requests for a particular period of time
         <blockquote>
-            #iptables -A INPUT -p icmp -j CHECK-ICMP
-            #iptables -A CHECK-ICMP -m recent --name badass --rcheck --seconds 60 --reap --rcheck --hitcount 20 -j DROP
+            #iptables -A INPUT -p icmp -j CHECK-ICMP<br>
+            #iptables -A CHECK-ICMP -m recent --name badass --rcheck --seconds 60 --reap --rcheck --hitcount 20 -j DROP<br>
             #iptables -A CHECK-ICMP -m recent --name badass --set -j ACCEPT
         </blockquote>
-        <div class="spnote"><i>CHECK-ICMP is a custom chain. So create this chain before using this command. "<i>badass</i>" is a name given to the list. Check list under <i>/proc/net/xt_recent/badass</i> file.</div>
+        <span class="spnote">
+            <i>CHECK-ICMP</i> is a custom chain. So create this chain before using this command. "<i>badass</i>" is a name given to the list. Check list under <i>/proc/net/xt_recent/badass</i> file. 
+        </span>
         <div class="note">The "<i>recent</i>" module can be used to dynamically block packets from IP address, to create a list of malicious users and therefore block those IPs.</div>
     </li>
     <li>
@@ -177,6 +169,52 @@
         <blockquote>
             #iptables -A &lt;chain&gt; ... -m string --algo bm --string --icase '&lt;pattern&gt;' -j &lt;TARGET&gt;
         </blockquote>
+        <div class="note">--algo could be "bm" (Boyer-Moore) or "kmp" (Knuth-Pratt-Morris)</div>
+    </li>
+</ul>
+<h3>Target Extensions</h3>
+<ul>
+    <li>
+        AUDIT : Allows to create audit records of types dropped, rejected or accepted.
+        <blockquote>
+            #iptables -A INPUT -p icmp -j AUDIT --type dropped<br>
+            #iptables -A INPUT -p icmp -j DROP
+        </blockquote>
+    </li>
+    <li>
+        LOG : To enable kernel logging of packets
+        <blockquote>
+            #iptables -A INPUT -p icmp -j LOG --log-level warning --log-prefix test_ping_rule
+        </blockquote>
+        <div class="spnote">
+            LOG is a <i>non-terminating</i> target, so traversal continues to the next rule, therefore add a new rule with same criteria to ACCEPT, DROP or REJECT packets.
+        </div>
+        <div class="note">
+            Search the log entries using dmesg or journalctl. e.g.
+            <blockquote>
+                #journalctl -g "test_ping_rule" --quiet --no-hostname
+            </blockquote>
+        </div>
+    </li>
+    <li>
+            To redirect traffic on port 80 to a different port (8080)
+            <blockquote>
+                #iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+            </blockquote>
+            <div class="spnote">Valid only on PREROUTING and OUTPUT chains of <b>nat</b> table.</div>
+            <div class="note">Assign CPU using the cpu extension, i.e. -m cpu --cpu &lt;cpu-no&gt;</div>
+    </li>
+    <li>
+        Blink Scrolllock LED on keyboard for 5 seconds when someone pings the machine.
+        <blockquote>
+            #iptables -A INPUT -p icmp -J LED --led-trigger-id pingpong --led-delay 5000
+        </blockquote>
+        <div class="note">
+            After adding the rule add the following <code>netfilter-&lt;led-trigger-id&gt;</code> to the file <code><i>/sys/class/leds/&lt;ledname&gt;/trigger</i></code>. In this case 
+            <blockquote>
+                #echo netfilter-pingpong > /sys/class/leds/input8\:\:scrolllock/trigger
+            </blockquote>
+        </div>
     </li>
 </ul>
 </body>

@@ -49,10 +49,12 @@ blockquote{
 
 .note{
     color: blue;
+    padding-bottom: 5px;
 }
 
 .spnote{
     color: rebeccapurple;
+    padding-bottom: 5px;
 }
 
 ul#egs li {
