@@ -3,11 +3,6 @@ code{
     color: brown;
 }
 
-.code{
-    font-size: 14px;
-    color: brown;
-}
-
 .eg{
     padding-top: 5px;
     padding-left: 10px;
@@ -54,6 +49,10 @@ blockquote{
 
 .note{
     color: blue;
+}
+
+.spnote{
+    color: rebeccapurple;
 }
 
 ul#egs li {

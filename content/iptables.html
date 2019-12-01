@@ -22,7 +22,19 @@
         </ul>
     </li>
     <li>Refer man <b>iptables-extension</b> for more config. extensions.</li>
-    <li>All the supported protocols are saved in <i>/etc/protocols</i>.</li>
+    <li>"mac" extension can be used to match source MAC address, which is valid only for ethernet devices. Only PREROUTING, FORWARD, INPUT chains make sense to use with this extension.</li>
+    <li>Extension "quota" can be used to implement network quotas. The value is decreased on each packet, the condition holds true until it reaches zero.
+        <blockquote>
+            ... -m quota --quota &lt;bytes&gt; ...
+        </blockquote>
+    </li>
+    <li>All supported protocols are saved in <i>/etc/protocols</i>.</li>
+    <li>To display all options associated with a protocol use "-h" after the protocol.
+        <blockquote>
+            #iptables -p tcp -h<br>
+            #iptables -p icmp -h
+        </blockquote>
+    </li>
     <li>For persistent saving of rules change the value of these options to "yes" (on RHEL based OS).
         <blockquote>
             IPTABLES_SAVE_ON_STOP="yes"<br>
@@ -31,13 +43,94 @@
             Execute : <br>
             #service iptables save
         </blockquote>
+        <div class="note">This will update the file <i>/etc/sysconfig/iptables</i> enabling persistent rules.</div>
         OR
         <blockquote>
             #iptables-save &gt; &lt;filename&gt;<br><br>
             <i>restore from file using using user own systemd service.</i><br><br>
             #iptables-restore &lt; &lt;filename&gt;
         </blockquote>
-        <div class="note">This will update the file <i>/etc/sysconfig/iptables</i> enabling persistent rules.</div>
+    </li>
+    <li>
+        <h4>u32 module</h4>
+        To extract and test the bytes from packets upto <b>4 bytes</b> at a time. Format is :-<br>
+        <blockquote>
+            [!] --u32 <u>tests</u>
+        </blockquote>
+        <ul>
+            <li>To match IP packets whose total length >=256
+            <blockquote>
+                #iptables ... -m u32 --u32 "0 & 0xFF = 0x100:0xFFFF" ...
+            </blockquote>
+            <div class="note"><p>The <b>total length</b> field (16-bits) of an IP header defines the total length, i.e. 2-3 bytes of IP header.</p>
+                <p>
+                    Bytes 0-3 are ANDed with the value 0xFF, which clears bytes 0 and 1.
+                    <table style="border: none; padding: 3px;">
+                        <tr>
+                            <td></td>
+                            <td>xxxxxxxx</td>
+                            <td>xxxxxxxx</td>
+                            <td>yyyyyyyy</td>
+                            <td>yyyyyyyy</td>
+                        </tr>
+                        <tr>
+                            <td>&</td>
+                            <td>00000000</td>
+                            <td>00000000</td>
+                            <td>11111111</td>
+                            <td>11111111</td>
+                        </tr>
+                        <tr>
+                            <td>=</td>
+                            <td></td>
+                            <td></td>
+                            <td>yyyyyyyy</td>
+                            <td>yyyyyyyy</td>
+                        </tr>
+                    </table>
+                </p>
+                <p>
+                    This is same as using the <b>length</b> module.
+                    <blockquote>
+                        #iptables ... -m length --length 256:65535 ...
+                    </blockquote>
+                </p>
+            </div>
+        </li>
+        <li>
+            To check the first byte past the IP header is 0
+            <blockquote>
+                #iptables ... -m u32 --u32 "0 >> 22 & 0x3C @ 0 >> 24 = 0" ...
+            </blockquote>
+            <div class="note">
+                <p>The size of the IP header is given by the <b>Header Length</b> field, which specifies how many 4 byte words exists. For instance, if it is 5, then the header length would be 5 x 4 bytes = 20 bytes. </p>
+                <p>
+                    "0 >> 22" --> Innorder to get the second-half of the 0<sup>th</sup> byte, it is right shifted 22 times (shifting right 22 times instead of 24 is same as multiplying it by 4. i.e. Header length x 4 bytes), which is ANDed with 0x3C to obtain that 4 bits alone. The value is then used as an offset for the "@" operator to jump to next header.
+                </p>
+                <p>
+                    The "@" operator is then used to move into the new offset. The new 0<sup>th</sup> byte is shifted right 24 times to remove bytes 1,2,3 and get the 0<sup>th</sup> byte alone which is matched with the value 0.
+                </p>
+                </div>
+        </li>
+        <li>
+            To check if TCP payload bytes 4-7 contains the value 5,6,7
+            <blockquote>
+                #iptables ... -m u32 --u32 "0 >> 22 & 0x3C @ 12 >> 26 & 0x3C @ 4 = 5,6,7" ...
+            </blockquote>
+            <div class="spnote">
+                First shifting is to jump to the TCP header, same as above example.
+            </div>
+            <div class="note">
+                <p>
+                    TCP header contains the <b>Data offset</b> or <b>Offset</b> field which stores the number of 4 byte words in TCP header, essentially to calculate the length of header, which is the first-half of the 12<sup>th</sup> byte. 
+                </p>
+                <p>
+                    The byte is then shifted right 26 times (multiplied by 4) and again this value is used an offset the "@" operator. Then the bytes 4-7 matched, if they contain any of 5,6 or 7.
+                </p>
+
+            </div>
+        </li>
+        </ul>
     </li>
     
 </ul>
@@ -53,7 +146,36 @@
     <li>
         To block incoming UDP packets/connections (which are not initiated by the machine) except DNS.
         <blockquote>
-            iptables -t filter -A INPUT -p udp ! --sport 53 -m conntrack --ctstate NEW -j DROP
+            #iptables -t filter -A INPUT -p udp ! --sport 53 -m conntrack --ctstate NEW -j DROP
+        </blockquote>
+    </li>
+    <li>
+        To redirect traffic on port 80 to a different port (8080)
+        <blockquote>
+            #iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+        </blockquote>
+        <div class="note">Assign CPU using the cpu extension, i.e. -m cpu --cpu &lt;cpu-no&gt;</div>
+    </li>
+    <li>
+        Accept all packets from own device, i.e. via loopback interface.
+        <blockquote>
+            #iptables -A INPUT -i lo -j ACCEPT
+        </blockquote>
+    </li>
+    <li>
+        To accept only a specified number of ping requests for a particular period of time
+        <blockquote>
+            #iptables -A INPUT -p icmp -j CHECK-ICMP
+            #iptables -A CHECK-ICMP -m recent --name badass --rcheck --seconds 60 --reap --rcheck --hitcount 20 -j DROP
+            #iptables -A CHECK-ICMP -m recent --name badass --set -j ACCEPT
+        </blockquote>
+        <div class="spnote"><i>CHECK-ICMP is a custom chain. So create this chain before using this command. "<i>badass</i>" is a name given to the list. Check list under <i>/proc/net/xt_recent/badass</i> file.</div>
+        <div class="note">The "<i>recent</i>" module can be used to dynamically block packets from IP address, to create a list of malicious users and therefore block those IPs.</div>
+    </li>
+    <li>
+        To accept or reject packets which has a particular string or pattern of string
+        <blockquote>
+            #iptables -A &lt;chain&gt; ... -m string --algo bm --string --icase '&lt;pattern&gt;' -j &lt;TARGET&gt;
         </blockquote>
     </li>
 </ul>
