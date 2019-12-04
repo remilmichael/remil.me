@@ -12,17 +12,30 @@
     <li>To setup, maintain, inspect -- ipv4, ipv6 packet filter rules</li>
     <li>Have several tables -- each contains -- chains (built-in or user-defined).</li>
     <li>The <i>filter</i> is the default table used for rules. Only <i>nat, filter</i> are used for almost all configurations.</li>
-    <li>There are several chains available, such as 
+    <li>The <i>mangle</i> table is used to alter the IP header of a packet in different ways, such as modifying MTU, TTL and add kernel "mark" to a packet (not attached to the packet) which may be used by other tables or networking tools.</li>
+    <li>On the other hand the <i>raw</i> table is used to mark for exemptions (NOTRACK) in connection tracking. These connections won't be tracked in any other tables. Use cases : For a router, we can set NOTRACK to connections/packets which are <b>forwarded</b>, thus filtering only incoming and outgoing traffic. Same with webservers, set NOTRACK for all <code>http</code> (port 80) and <code>https</code> (port 443) traffic, while filtering rest of the traffic, without overloading the system.</li>
+    <li>The order in which tables are called when associated <i>netfilter</i> hook is triggered:- <br>
+        <code style="padding-top: 15px;">raw --> conntrack --> mangle --> nat (DNAT) --> filter --> security --> nat(SNAT)</code><br>
+        <div class="spnote">Some cases chains in subsequent tables may not be evaluated, they might be skipped, which depends on the previous table's rules (in case of NATed connections).</div>
+    </li>
+    <li>There are several chains available, such as :-
         <ul>
-            <li><b>INPUT</b> : For packets destined for local sockets.</li>
-            <li><b>OUTPUT</b> : For packets generated within the host or machine which is destined for outside the machine.</li>
-            <li><b>FORWARD</b> : For packets to be routed through the box (machine).</li>
-            <li><b>PREROUTING</b> : For altering packets as soon as they come in.</li>
-            <li><b>POSTROUTING</b> : For altering packets just before they leave the machine.</li>
+            <li><b>INPUT</b> : For packets destined for local sockets. Triggered by <code>NF_IP_LOCAL_IN</code> hook.</li>
+            <li><b>OUTPUT</b> : For packets generated within the host or machine which is destined for outside the machine. Triggered by <code>NF_IP_LOCAL_OUT</code> hook.</li>
+            <li><b>FORWARD</b> : For packets to be routed through the box (machine). Triggered by <code>NF_IP_FORWARD</code> hook.</li>
+            <li><b>PREROUTING</b> : For altering packets as soon as they come in. Triggered by <code>NF_IP_PRE_ROUTING</code> hook.</li>
+            <li><b>POSTROUTING</b> : For altering packets just before they leave the machine. Triggered by <code>NF_IP_POST_ROUTING</code> hook.</li>
+        </ul>
+        Chain traversal order : <br>
+        <ul>
+            <li>For <b>incoming</b> packets to the local sockets : <code>PREROUTING</code> --> <code>INPUT</code></li>
+            <li>The packets which has to be <b>forwarded</b> : <code>PREROUTING</code> --> <code>FORWARD</code> --> <code>POSTROUTING</code></li>
+            <li>Locally generated packets (<b>outgoing</b> packets) : <code>OUTPUT</code> --> <code>POSTROUTING</code></li>
         </ul>
     </li>
     <li>Refer man <b>iptables-extension</b> for more config. extensions.</li>
     <li>Packets are matched with the rules in chain until they hit the following <i>terminating</i> targets:- <code>ACCEPT</code>,<code>DROP</code>, <code>REJECT</code> or <code>RETURN</code>. So multiple rules can be specified with same criteria until it hit one of these targets.</li>
+    <li>The option <b>-g</b> or <b>--goto</b> is another jump function which is similar to the <b>--jump</b>, except with the dissimilarity that, while using <i>--goto</i> on a chain and on encountering the RETURN target on the called chain with any rule, then it won't be returned to the previous chain, instead it returns to most recent chain which use <i>--jump</i> option. e.g. From INPUT chain made a <i>--jump</i> to a custom chain, say CUSTOM_ONE and from CUSTOM_ONE it again made a jump, this time using <i>--goto</i> to another custom chain, CUSTOM_TWO, on traversing CUSTOM_TWO, it encouters the target RETURN, so in this case it will return to INPUT chain instead of CUSTOM_ONE chain. This is how <code>--goto</code> works.</li>
     <li>"mac" extension can be used to match source MAC address, which is valid only for ethernet devices. Only PREROUTING, FORWARD, INPUT chains make sense to use with this extension.</li>
     <li>Extension "quota" can be used to implement network quotas. The value is decreased on each packet, the condition holds true until it reaches zero.
         <blockquote>
@@ -63,7 +76,7 @@
             <blockquote>
                 #iptables ... -m u32 --u32 "0 & 0xFF = 0x100:0xFFFF" ...
             </blockquote>
-            <div class="note"><p>The <b>total length</b> field (16-bits) of an IP header defines the total length, i.e. 2-3 bytes of IP header.</p>
+            <div class="note"><p>The "<b>Total length</b>" field (16-bits) of an IP header defines the total length, i.e. 2-3 bytes of IP header.</p>
                     Bytes 0-3 are ANDed with the value 0xFF, which clears bytes 0 and 1.
                     <table style="border: none; padding: 3px;">
                         <tr>
@@ -171,6 +184,28 @@
         </blockquote>
         <div class="note">--algo could be "bm" (Boyer-Moore) or "kmp" (Knuth-Pratt-Morris)</div>
     </li>
+    <li>To limit the number of new TCP connections using the <b>limit</b> module
+        <blockquote>
+            #iptables -N SYN_FLOOD<br>
+            #iptables -A INPUT -p tcp -m tcp --tcp-flags SYN,ACK,RST,FIN SYN -j SYN_FLOOD<br>
+            #iptables -A SYN_FLOOD -m limit --limit 25/second --limit-burst 50 -j RETURN<br>
+            #iptables -A SYN_FLOOD -j DROP
+        </blockquote>
+        <div class="note">
+        <p>
+            Using the limit extension we can limit the traffic. The condition holds true until limit is not reached, upon hitting the limit, rule won't be a match and will traverse to the next rule in the chain.
+        </p>
+        <p>
+            The option <code>--limit</code> specifies number matches to done per given time (second, minute, hour, day). In this case it is 25/second. So every 40ms (1000ms/25 connections) a new TCP connection can be accepted, all others in between are dropped.
+        </p>
+        <p>
+            While the option <code>--limit-burst</code> specifies the initial number of packets to match. So in this case it is 50, which means, for instance, if new packets or connections arrive every 1ms for a period of 1 second, then for the first 50ms all packets are accepted, then from the 51<sup>st</sup>ms onwards, packets will be dropped until the 60<sup>th</sup>ms, where a new packet can be matched. This is option is used to control the burst traffic. For example, in this case, consider no new connections/packets are appearing on the machine for a particular period of time, then burst value will recharged by a value of <b>one</b> on every 40ms to a maximum of 50(--limit-burst value), which can be later utilized by the upcoming packets (i.e. upto 50ms, in this case).
+        </p>
+        <p>
+            Use <b>hashlimit</b> to apply this rule for a group of connections, whereas <b>limit</b> sets it globally for all IPs.
+        </p>
+        </div>
+    </li>
 </ul>
 <h3>Target Extensions</h3>
 <ul>
@@ -205,12 +240,12 @@
             <div class="note">Assign CPU using the cpu extension, i.e. -m cpu --cpu &lt;cpu-no&gt;</div>
     </li>
     <li>
-        Blink Scrolllock LED on keyboard for 5 seconds when someone pings the machine.
+        Blink Scrolllock LED on keyboard for 5 seconds when someone pings the host.
         <blockquote>
             #iptables -A INPUT -p icmp -J LED --led-trigger-id pingpong --led-delay 5000
         </blockquote>
         <div class="note">
-            After adding the rule add the following <code>netfilter-&lt;led-trigger-id&gt;</code> to the file <code><i>/sys/class/leds/&lt;ledname&gt;/trigger</i></code>. In this case 
+            After adding the rule add the following <code>netfilter-&lt;led-trigger-id&gt;</code> to the file <code><i>/sys/class/leds/&lt;ledname&gt;/trigger</i></code>. In this case :-
             <blockquote>
                 #echo netfilter-pingpong > /sys/class/leds/input8\:\:scrolllock/trigger
             </blockquote>

@@ -61,6 +61,10 @@ ul#egs li {
     margin-bottom: 10px;
 }
 
+ul li{
+    padding-bottom: 9px;
+}
+
 a:hover {
     background-color: yellowgreen;
 }
