@@ -252,5 +252,67 @@
         </div>
     </li>
 </ul>
+
+<h2>Firewalld</h2>
+<p>
+    Provides a front-end for the <b>iptables</b>
+</p>
+<ul>
+    <li>Zone :  Indicates the trust level that should be applied to a network, while connected to the network. There are several predefined trust zones, which are listed in the increasing order of trust :-
+        <br><code>drop < block < public < external < internal < dmz < work < home < trusted</code>
+        <div class="spnote">To get a brief description of what each zone represents :-</div>
+        <blockquote>
+            #firewall-cmd --permanent --zone=&lt;zone&gt; --get-description
+        </blockquote>
+    </li>
+    <li>
+        To control OUTPUT chain using firewalld use <code>--direct</code> interface. Firewalld is made for controlling incoming traffic. e.g. Drop all TCP traffic going to IP 127.0.0.1 with port 59
+        <blockquote>
+            #firewall-cmd --permanent --direct --add-rule ipv4 filter OUPUT 0 -p tcp -m tcp -d 127.0.0.1 --dport 59 -j DROP
+        </blockquote>
+        <div class="spnote">The number after the chain ("0" in this case) specifies the rule number in the chain (OUTPUT).</div>
+    </li>
+    <li>
+        To save configurations permanently during runtime
+        <blockquote>
+            #firewall-cmd --runtime-to-permanent
+        </blockquote>
+    </li>
+    <li>To reload from permanent rules to become runtime rules
+        <blockquote>
+            #firewall-cmd --reload
+        </blockquote>
+    </li>
+    <li>
+        Adding a service "ssh" to the zone "public" permanently
+        <blockquote>
+            #firewall-cmd --permanent --zone=public --add-service=ssh
+        </blockquote>
+        <div class="note">This is equivalent to:-</div>
+        <blockquote>
+            #iptables -A INPUT -p tcp -m tcp --dport 22 -m conntrack --ctstate NEW,UNTRACKED -j ACCEPT 
+        </blockquote>
+    </li>
+    <li>
+        Block all new incoming tcp connections using rich rule.
+        <blockquote>
+            #firewall-cmd --zone=public --permanent --add-rich-rule='rule protocol value="tcp" drop'
+        </blockquote>
+        <span class="spnote">The above rule implicitly adds "conntrack" module to specify only NEW and UNTRACKED packets to drop</span>
+        <blockquote>
+            ... -p tcp -m conntrack --ctstate NEW,UNTRACKED -j DROP
+        </blockquote>
+    </li>
+    <li>
+        Block all incoming and outgoing traffic
+        <blockquote>
+            #firewall-cmd --panic-on
+        </blockquote>
+        <span class="spnote">Use --panic-off to turn off panic mode.</span>
+    </li>
+</ul>
+<p>
+    Firewalld options :- To add a particular service, port, icmp-block to a <b>zone</b>, firewalld uses <code>--add-*</code> format. On the contrary, to create a new service, helper or icmptype, it uses <code>--new-*</code> format. To list all the services, icmptypes associated with a zone it uses <code>--list-*</code>, while <code>--get-*</code> to retrieve available services or icmp types etc. that can be used with a zone. Similarly <code>--remove-*</code> to remove these from a zone and <code>--delete-*</code> to remove that particular service or protocol altogether from firewalld.
+</p>
 </body>
 </html>
