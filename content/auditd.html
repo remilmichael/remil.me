@@ -11,8 +11,8 @@
 <ul> 
     <li>Refer "man <b>audit.rules</b>"</li>
     <li>ausyscall --dump ---> To list all system call along with their numbers.</li>
-    <li><a href="https://github.com/linux-audit/audit-documentation/blob/master/specs/fields/field-dictionary.csv">Audit Field Dictionary</a></li>
-    <li><a href="https://github.com/linux-audit/audit-documentation/blob/master/specs/messages/message-dictionary.csv">Audit Record/Message Dictionary</a></li>
+    <li><a href="https://github.com/linux-audit/audit-documentation/blob/master/specs/fields/field-dictionary.csv" target="_blank" rel="noreferrer">Audit Field Dictionary</a></li>
+    <li><a href="https://github.com/linux-audit/audit-documentation/blob/master/specs/messages/message-dictionary.csv" target="_blank" rel="noreferrer">Audit Record/Message Dictionary</a></li>
     <li>For preconfigured rules --> /usr/share/doc/audit/rules/</li>
     <li>Save audit rules at <b>/etc/audit/rules.d/</b> of any filename with <b>.rules</b> extension. Use "<i>augenrules --load</i>" to load and copy all rules into a single file (/etc/audit/audit.rules)</li>
     <li>On bi-arch systems always specify the architecture on using syscalls. e.g. -F arch=&lt;architecture&gt; (for 64 bit architecture)</li>
@@ -30,8 +30,10 @@
         <li>
             Record an event whenever a file is opened for reading
             <blockquote>
-                -a always,exit -F arch=&lt;architecture&gt; -S openat -F a2=0 -F a2=2 -F path=&lt;filename&gt;
+                -a always,exit -F arch=&lt;architecture&gt; -S openat -F a2=0 -F a2=2 -F path=&lt;filename&gt;<br>
+                -a always,exit -F arch=&lt;architecture&gt; -S open -F a1=0 -F a1=2 -F path=&lt;filename&gt;
             </blockquote>
+            <div class="spnote">Some programs open a file using <i>open</i> syscall, while some use <i>openat</i>. So it is required to write rules for both syscalls. Refer <code>man open</code> for more information regarding flags and parameters.</div>
             <div class="note">a2=0 = O_RDONLY = 0; a2=2 = O_RDWR = 2</div>
         </li>
         <li>
