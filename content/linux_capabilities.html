@@ -57,7 +57,7 @@
         <table class="woborder">
             <tr>
             <td>This is the only capability set where kernel performs permission checks for a thread. This set holds the capabilities that a thread currently has. Also capabilities can be dropped after a particular operation.</td>
-            <tr>
+            </tr>
         </table>
     </li>
     <li style="padding-top: 20px;">
@@ -76,8 +76,9 @@
         </table>
     </li>
     <li style="padding-top: 15px;"><em><u>Reason to introduce Ambient set</u></em></li>
-    <p>Capability evolution rules :</p>
-    <table class="normal" style="text-align: left;">
+</ul>
+    <span style="position: relative; margin-left: 40px;">Capability evolution rules :</span>
+    <table class="normal" style="text-align: left; position: relative; margin-left: 40px;">
         <tr>
             <th>Before ambient set</th>
             <th>After ambient set</th>
@@ -99,18 +100,23 @@
             <td>P'(inheritable) = P'(inheritable)</td>
         </tr>
     </table>
+    <ul>
     <li style="padding-top: 5px;">Ambient set is just like inheritable set, except the fact that all the capabilities in the ambient set of the parent process (caller of <i>execve()</i>) are copied to child process, iff the process/program is not privileged, in the case of inheritable set capabilities in this set won't be copied to child process if the process <b>not privileged</b>, i.e. it needs to be <b>privileged</b>. So ambient set is an inheritable set for the non-privileged processes.</li>
+    </ul>
     <h3>File capabilities</h3>
-    <li></li><b>Permitted</b> set (forced) : Capabilities which are automatically applied to the thread.</li>
-    <li><b>Inheritable</b> set (allowed) : This set is <b>AND</b>ed with thread's inheritable set, which are enabled in the permitted set of thread after execve(). A sample program : Refer <a href="https://github.com/r3mtm/misc/tree/master/linux_capabilities/cap_inheritable">here</a>. <br> <blockquote>P'(permitted) = F<sub>new</sub>(inheritable) & P(inheritable).</blockquote></li>
+    <ul>
+    <li><b>Permitted</b> set (forced) : Capabilities which are automatically applied to the thread.</li>
+    <li><b>Inheritable</b> set (allowed) : This set is <b>AND</b>ed with thread's inheritable set, which are enabled in the permitted set of thread after execve(). A sample program : Refer <a href="https://github.com/r3mtm/misc/tree/master/linux_capabilities/cap_inheritable" target="_blank" rel="noopener noreferrer">here</a>. <br> <blockquote>P'(permitted) = F<sub>new</sub>(inheritable) & P(inheritable).</blockquote></li>
     <li><b>Effective</b> set : It is a bit, instead of a set.</li>
+    </ul>
     <hr style="margin-top: 15px;">
+    <ul>
     <li style="padding-top: 10px;"><b style="color: green;">Purpose of <i>process</i> permitted and effective set</b> : This set can act like a buffer to store all capabilities when that particular capability is not in use (i.e. if that particular capability is not in the <b>effective</b> set) by a process. Dropping a capability from effective set is analogous to the temporarily changing the EUID from 0 to non-zero ID, whereas the SUID holds the "0" while EUID is set non-zero. Here the EUID can be compared to the effective set and SUID to permittive set.  Also permitted set acts as an upper bound of capabilities. </li> 
     <li style="padding-top: 10px;"><b style="color: green;">Purpose of <i>file</i> permitted set and effective bit</b> : File permitted set acts a set of capbilities which that executable can attain while it is being executed (by follwing the transformation of capabilities algorithm). Whereas the effective bit is useful for <b>capability-dumb</b> programs, where the capabilities in the permitted set will be automatically added to effective set, for capability aware program, it internally make capget() and capset() calls to add it to the effective set. In case of <b>capability aware</b> programs, it can be made useful; without setting this bit, after an exec() call the new process won't be having any capabilities <b>initially </b>, the parent process had, which need to be acquired by system calls.</li>
-</ul>
+    </ul>
 
-<p>
     <h3>Capability bounding set</h3>
+<p>
     It is a per-process attribute since Linux 2.6.25, where before it was a system-wide attribute. This set is ANDed with file permitted set. This is a limiting superset for capabilities than can be added to process's inheritable set (can't add from permitted set without this). 
 </p>
 <hr>
@@ -120,7 +126,6 @@
 
 <p>Any capabilities given in the <b>file permitted set</b> can be set to <i>inheritable set</i> and <i>permitted set</i> of a process, using the <code>cap_set_flag()</code> and <code>cap_set_proc()</code> functions.</p>
 
-<p>
     <h3>Using capabilities without file capability support</h3>
     <ol>
         <li>Execute the program as root or EUID with 0 (all capabilities except CAP_SETPCAP are granted)</li>
@@ -128,14 +133,13 @@
         <li>Set the <i>SECBIT_KEEP_CAPS</i> flag or use <i>prctl() PR_SET_KEEPCAPS</i> so that the capabilities won't dropped on changing to nonzero UID.</li>
         <li>Set all UIDs to nonzero value (requires SET_SETUID capability for this) and use libcap API to raise or drop capabilities.</li>
     </ol>
-    Sample <a href="https://github.com/r3mtm/misc/blob/master/linux_capabilities/without_file_cap.c">program</a>.<br>
+    Sample <a href="https://github.com/r3mtm/misc/blob/master/linux_capabilities/without_file_cap.c" target="_blank" rel="noopener noreferrer">program</a>.<br>
     NOTE : A process can't keep capabilities on effective set, without having that particular capability on the permitted set (can't be dropped from the permitted set).
-</p>
 
 <h3>References and footnotes</h3>
 <ul>
     <li>To use libcap API on debian systems, install <i>libcap-dev</i> and for RHEL based OS use <i>libcap-devel</i>.</li>
-    <li>Sample programs : <a href="https://github.com/r3mtm/misc/tree/master/linux_capabilities">Source code</a></li>
+    <li>Sample programs : <a href="https://github.com/r3mtm/misc/tree/master/linux_capabilities" target="_blank" rel="noopener noreferrer">Source code</a></li>
 </ul>
 
 </body>

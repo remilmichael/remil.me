@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="keywords" content="linux,selinux,security,mac">
+<title>SELinux</title>
+<link rel="stylesheet" type="text/css" href="../lib/css/sub.css">
+</head>
+<body>
+<h3>SELinux</h3>
+<ul>
+    <li>It is an implementation of MAC (Mandatory Access Control).</li>
+    <li>SELinux config file can be found in <i>/etc/selinux/config</i>.</li>
+    <li>It can be in three operating modes;-</li>
+    <li style="list-style-type: none;"> <ul>
+        <li><b>disabled</b>: Disables SELinux protection</li>
+        <li><b>permissive</b>: All accesses denied by the policy will <i>permitted</i>, but will be audited.</li>
+        <li><b>enforcing</b>: Enforce accesses and will be audited.</li>
+    </ul></li>
+    <li style="list-style-type: none;"><div class="note">Mode can be set by changing the variable <code>SELINUX</code> to above values in the "config" file</div></li>
+    <li>SELinux also supports multiple policy, where only one will be active at a time.</li>
+    <li style="list-style-type: none;"><ul>
+        <li><b>targeted</b>: Only target applications are restricted or confined.</li>
+        <li><b>mls (Multi-Level Security)</b>: All processed are confined or partitioned into security domains and policies.</li>
+    </ul></li>
+    <li style="list-style-type: none;"><div class="note">Policy can be set by editing the variable <code>SELINUXTYPE</code> in the "config" file.</div></li>
+</ul>
+<h3>Core SELinux Components</h3>
+<ol>
+    <li><b>Subject</b>: In SELinux subject = active process and has a security context.</li>
+    <li><b>Object Manager (OM)</b>: Knows the actions required of the particular resources and enforce actions.</li>
+    <li><b>Security server</b> : Make decisions regarding the subjects.</li>
+    <li><b>Security policy</b> : Describe rules</li>
+    <li><b>Access Vector Cache (AVC)</b> : Caches security server decisions to improve performance.</li>
+</ol>
+<div class="spnote">High level SELinux Core diagram shown <a href="../lib/images/selinux-core.png" target="_blank">here</a>. More detailed diagram can be found <a href="../lib/images/selinux-high-level-arch.png" target="_blank">here</a>.</div>
+<div class="note">OM and AVC can reside in both :- 
+    <ul>
+        <li>Kernel space : For service such as files, directory, socket, IPC etc. (accessed via LSM framework hooks)</li>
+        <li>Userspace : For SELinux-aware applications or services. e.g. X-windows, passwd etc.</li>
+    </ul>
+</div>
+<h3>SELinux Security context</h3>
+<p>SELinux has <b>four</b> components in security context:-</p>
+<ul>
+    <li><b>SELinux user name</b> : First component of security context (usernames ends in "_u")</li>
+    <li><b>SELinux role name</b> : Second component of a security context (ends in "_r"). This allows SELinux users to be associated to one or more roles, known as RBAC (Role Based Access Control).</li>
+    <li><b>Type Enforcement (TE)</b> : All subjects and objects have a type identifier (ends in "_t"). With a subject it is used to refer a process or a group of process, whereas on a object it is used for specifying the object type (e.g. file type).</li>
+    <li><b>Range</b> : Used with MLS.</li>
+</ul>
+<div class="spnote">Format of security context ==> user:role:type[:range]</div>
+    <h4>Computing security context for a new:-</h4>
+    <ul style="list-style-type: none;">
+        <li>
+        <table>
+            <tr>
+                <td><b>Process</b></td>
+                <td> : </td>
+                <td>On fork</td>
+                <td> => </td>
+                <td>Inherits from parent or creator.</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td> : </td>
+                <td>On exec</td>
+                <td> => </td>
+                <td>May transition to another security context based on the policy statement, via setexeccon(3) if it is SELinux-aware.</td>
+            </tr>
+        </table></li>
+        <li>
+            <table>
+                <tr>
+                    <td><b>File</b></td>
+                    <td> : </td>
+                    <td>User component</td>
+                    <td> => </td>
+                    <td>Will be inherited from the creating process.</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td> : </td>
+                    <td>Role component</td>
+                    <td> =></td>
+                    <td>Defaults to <i>object_r</i> role.</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td> : </td>
+                    <td>Type component</td>
+                    <td> => </td>
+                    <td>Defaults to type of parent directoy if no matching<i>type_transition</i> rule was specified in policy.</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td> : </td>
+                    <td>Range/level component</td>
+                    <td> => </td>
+                    <td>Defaults to low/current level of the creating process if no <i>range_transition</i> rule was specified in policy. </td>
+                </tr>
+            </table>
+            <div class="spnote">Security-aware applications can override this default behavior by calling setfscreatecon(3) prior to creating the file, if permitted by policy. For existing files, label is determined by <i>xattr</i> attribute, if it has. Else file will be labelled with default security context for the filesystem. Filesystems are labelled using specific kernel policies that starts with "<i>fs_use</i>" with filesystem name and behavior.</div>
+        </li>
+    <li>For detailed information click <a href="https://selinuxproject.org/page/NB_ComputingSecurityContexts#Security_Context_Computation_for_Kernel_Objects" target="_blank" rel="noreferrer noopener">here</a></li>
+    </ul>
+<h3>Subjects in SELinux</h3>
+<ul>
+    <li>Defined as an active process with a security context.</li>
+    <li>Process can also be referred as a subject since each process has an associated object class(process) defining the permissions on the active process`</li>
+    <li>Subjects can be:-</li>
+    <li style="list-style-type: none;">
+        <ul>
+            <li><b>Trusted</b> : Those programs which support the SELinux functionality such as login, init, pam, kernel etc.</li>
+            <li><b>Untrusted</b> :  Everything else.</li>
+        </ul>
+    </li>
+</ul>
+
+<h3>Objects in SELinux</h3>
+<ul>
+    <li>Objects can be resources such as files, sockets, pipes etc.</li>
+    <li>It has a class identifier with set of permissions</li>
+    <li>Objects can be resources such as files, sockets, pipes etc.</li>
+    <li>It has a class identifier (defines purpose) with a set of permissions (read, write, send etc.).</li>
+    <li>On object instatiation, a <b>name</b> and a <b>security context</b> will be defined.</li>
+    <li>Object class consists of kernel object classes (for handling files, sockets etc.) and userspace object classes (for managing X-windows, dbus etc.). A list of object classes and permissions can be found <a href="https://selinuxproject.org/page/NB_ObjectClassesPermissions" target="_blank" rel="noopener noreferrer">here</a>.</li>
+
+    <li>Example below shows how a process can be allowed to access a resource.
+        <blockquote>
+            allow unconfined_t ext_gateway_t : process transition
+        </blockquote>
+        <div class="spnote">
+            <ul style="list-style-type: none;">
+                <li><b>allow</b> : Allow the rule.</li>
+                <li><b>unconfied_t</b> : The source domain.</li>
+                <li><b>ext_gateway_t</b> : The target type/domain.</li>
+                <li><b>process</b> : Defines the object class "process"</li>
+                <li><b>transition</b> : Defines the permission(transition i.e. to transition to target type/context during an <i>exec()</i> operation) in the object class "<code>process</code>".</li>
+            </ul>
+            <b>Meaning</b> : Allow all processes in the <code>unconfined_t</code> domain to <code>transition</code> to the target domain <code>ext_gateway_t</code> during an <code>exec()</code> operation.
+        </div>
+    </li>
+</ul>
+<h3>Labelling Objects</h3>
+<p>
+    Labelling objects are usually handled by the system and unseen by the users. Either they are inherited from parent process/object or by might be done by the Object Manager, may be even done by the process itself (security-aware ones). If a filesystem uses extended attributes (xattr), then labelling is supported by:-
+    <ul>
+        <li>Using <code>fs_use_attr</code> statement along with the filesystem name.</li>
+        <li>Using 'file context' file which define the initial contexts.</li>
+        <li>Using utilities such as <code>fixfiles</code>, <code>setfiles</code>, <code>chcon</code>, <code>restorecon</code> etc.</li>
+    </ul>
+    To view the SELinux context of the file named <i>testfile</i>
+    <blockquote>
+        $ls -Z testfile
+    </blockquote>
+    OR
+    <blockquote>
+        $getfattr --name=security.selinux testfile
+    </blockquote>
+    <div class="spnote">
+        Same can be used to list the context of all files and folders.
+    </div>
+    <div class="note">
+        While copying a file to another location, its security context is replaced with label of its new parent directory, unless option <code>-Z</code> is used while copying, where it'll be preserved.
+        <blockquote>
+            $cp -Z &lt;label&gt; &lt;filename&gt; &lt;destination&gt;
+        </blockquote>
+        On the contrary, moving a file retains its label. <br>
+        The <code>restorecond</code> daemon can be used to automatically apply the labels to a file on its creation, by specifying a path and its security context (label).
+    </div>
+</p>
+<p>
+    In SELinux subjects (processes) inherit the security context of the parent process.
+</p>
+<h3>Domain Transition</h3>
+<p>
+    All diagrams and examples are copied from <a href="https://selinuxproject.org" target="_blank" rel="noreferrer noopener">SELinux wiki</a>.
+</p>
+</body>
+</html>
