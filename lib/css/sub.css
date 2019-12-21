@@ -53,6 +53,7 @@ blockquote{
 }
 
 .spnote{
+    padding-top: 4px;
     color: rebeccapurple;
     padding-bottom: 5px;
 }

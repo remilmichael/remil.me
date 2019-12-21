@@ -22,6 +22,7 @@
     <li style="list-style-type: none;"><ul>
         <li><b>targeted</b>: Only target applications are restricted or confined.</li>
         <li><b>mls (Multi-Level Security)</b>: All processed are confined or partitioned into security domains and policies.</li>
+        <li>All the rules are stored at the location <code>/etc/selinux/&lt;policy-type&gt;/</code></li>
     </ul></li>
     <li style="list-style-type: none;"><div class="note">Policy can be set by editing the variable <code>SELINUXTYPE</code> in the "config" file.</div></li>
 </ul>
@@ -127,12 +128,12 @@
 
     <li>Example below shows how a process can be allowed to access a resource.
         <blockquote>
-            allow unconfined_t ext_gateway_t : process transition
+            allow unconfined_t ext_gateway_t : process transition;
         </blockquote>
         <div class="spnote">
             <ul style="list-style-type: none;">
                 <li><b>allow</b> : Allow the rule.</li>
-                <li><b>unconfied_t</b> : The source domain.</li>
+                <li><b>unconfined_t</b> : The source domain.</li>
                 <li><b>ext_gateway_t</b> : The target type/domain.</li>
                 <li><b>process</b> : Defines the object class "process"</li>
                 <li><b>transition</b> : Defines the permission(transition i.e. to transition to target type/context during an <i>exec()</i> operation) in the object class "<code>process</code>".</li>
@@ -142,7 +143,6 @@
     </li>
 </ul>
 <h3>Labelling Objects</h3>
-<p>
     Labelling objects are usually handled by the system and unseen by the users. Either they are inherited from parent process/object or by might be done by the Object Manager, may be even done by the process itself (security-aware ones). If a filesystem uses extended attributes (xattr), then labelling is supported by:-
     <ul>
         <li>Using <code>fs_use_attr</code> statement along with the filesystem name.</li>
@@ -168,11 +168,121 @@
         On the contrary, moving a file retains its label. <br>
         The <code>restorecond</code> daemon can be used to automatically apply the labels to a file on its creation, by specifying a path and its security context (label).
     </div>
-</p>
-<p>
-    In SELinux subjects (processes) inherit the security context of the parent process.
-</p>
+In SELinux subjects (processes) inherit the security context of the parent process.
 <h3>Domain Transition</h3>
+    A process in a domain starts another process in another domain with a different security context. It can be done by two methods, one is by the SELinux-aware applications can specify domain of new process using <code>setexeccon()</code>, iff it has <code>setexec</code> permission. Another method is via <code>type_transition</code> statement.  Example:-
+    <blockquote>
+        type_transition unconfined_t secure_services_exec_t : process ext_gateway_t;
+    </blockquote>
+    <div class="spnote">
+        unconfined_t : Source domain<br>
+        secure_services_exec_t : target type<br>
+        ext_gateway_t : target domain<br><br>
+        <b>Meaning</b> : A process running in <code>unconfined_t</code> context executes a process in <code>secure_services_exec_t</code>, the process <b>should be</b> changed to <code>ext_gateway_t</code> context.
+    </div>
+    <div class="note">
+        For this happen, three conditions needs to be satified:-
+        <ul>
+            <li>The source domain (<code>unconfined_t</code>) has the permission to <code>transition</code> to target domain (<code>ext_gateway_t</code>).
+                <blockquote>
+                    allow unconfined_t ext_gateway_t : process transition;
+                </blockquote>
+            </li>
+            <li>The executable <b>file</b> needs to be <b>readable</b> and <b>executable</b> in the source domain (<code>unconfined_t</code>).
+                <blockquote>
+                    allow unconfined_t secure_services_exec_t : file { execute read getattr };
+                </blockquote>
+            Here the target domain is <code>secure_services_exec_t</code> because the executable <b>file</b> is in the context <code>secure_services_exec_t</code>.
+            </li>
+            <li>
+                The executable <b>file</b> needs an <code>entrypoint</code> to the target domain (ext_gateway_t).
+                <blockquote>
+                    allow ext_gateway_t secure_services_exec_t : file entrypoint;
+                </blockquote>
+                <span style="color: red">Still unknown why source and target are inverted.</span>
+            </li>
+        </ul>
+    </div>
+<h3>Object Transition</h3>
+Object transition rules can be useful, whenever a new object has created which requires a different security context than its parent. Example:-
+<blockquote>
+    type_transition ext_gateway_t in_queue_t : file in_file_t;
+</blockquote>
+<div class="spnote">
+    <b>Meaning</b> : whenever a process with a context <code>ext_gateway_t</code> creates a file in a directory (parent) with <code>in_queue_t</code> context, it should be labelled with the type <code>in_file_t</code>.
+</div>
+<div class="note">
+    This to happen, two permissions are required:-
+    <ul>
+        <li>Source domain (<code>ext_gateway_t</code>) needs permissions to create new entries in the <b>directory</b> of target domain (<code>in_queue_t</code>).
+            <blockquote>
+                allow ext_gateway_t in_queue_t : dir {add_name search write};
+            </blockquote>
+        </li>
+        <li>Source domain (<code>ext_gateway_t</code>) needs permissions to create new files in the target domain (<code>in_file_t</code>).
+            <blockquote>
+                allow ext_gateway_t in_file_t : file {write create getattr};
+            </blockquote>
+        </li>
+    </ul>
+</div>
+
+<h3>SELinux events Auditing</h3>
+Two main types of audit events
+<ul>
+    <li><b>AVC Audit Events</b> : Either generated from denial of access or when events requested for auditing.</li>
+    <li><b>SELinux-aware application events</b> : Generated by SELinux kernel services and SELinux-aware applications on events such as policy load, system error etc.</li>
+</ul>
+<div class="note">For events and its details : Click <a href="https://selinuxproject.org/page/NB_AL" target="_blank" rel="noreferrer noopener">here</a>.</div>
+
+<h3>Polyinstantiation</h3>
+To instantiate directories based on the method (user, level, context). This is to avoid various attack vectors such as attack from other users on the same host, when sharing the directories (such as /tmp). So separate instances of same directories are created in which contents are not cross-user accessible.
+<ul>
+    <li>Polyinstantiation config : /etc/security/namespace.conf</li>
+    <li>It can be done in three basis:- <code>user</code>, <code>context</code> and  <code>level</code>. Only the method <code>user</code> is available when not using SELinux.</li>
+    <li>SELinux can utilize polyinstantiation of directories via PAM. For this add the module <code>pam_namespace</code> to all <b>login</b> configurations (login, sshd etc.) in <code>/etc/pam.d/</code>.
+        <blockquote>
+            ...<br>
+            ...<br>
+            session required pam_namespace.so
+        </blockquote>
+    </li>
+    <li>Example for a polyinstantiation based on <b>context</b>.
+        <blockquote>
+            /tmp /tmp-inst context root,adm
+        </blockquote>
+        <div class="note">
+            Creates a instantiated directory at <code>/</code> named <code>tmp-inst</code>. From user's perspective all files will be written to the /tmp itself. But from <b>root</b> user's perspective, it will be something like <b>/tmp-inst/$USER/</b>, where files will be created inside this particular directory. The created /tmp-inst directory will be of permission <b>000</b>. This will be done for all users except <b>root</b> and <b>adm</b>.
+        </div>
+        <div class="spnote">
+            Systems which use SELinux must set <code>polyinstantiation_enabled</code> flag to 1.
+            <blockquote>
+                #setsebool -P polyinstantiation_enabled 1
+            </blockquote>
+        </div>
+    </li>
+    <li>Refer "<b>man namespace.conf</b>" for more details. </li>
+</ul>
+Files in SELinux filesystem : <a href="https://selinuxproject.org/page/NB_LSM#SELinux_Filesystem">here</a>
+<h3>SELinux config files and its attributes</h3>
+
+<h4>/etc/selinux/config</h4>
+Two required entries and three optional entries.
+<ul>
+    <li><b>SELINUX</b> : Required entry</li>
+    <li><b>SELINUXTYPE</b> : Required entry</li>
+    <li><b>SETLOCALDEFS</b> : Set it to <b>0</b> (or missing), if using policy store management (<b>semanage</b> and <b>semodule</b> commands) and if set to <b>1</b> then <b>init</b> and <b>load_policy</b> will do the job.</li>
+    <li><b>REQUIRESEUSERS</b> : If set to<b>1</b>, login is failed if no matching entry in /etc/selinux/&lt;selinuxtype&gt;/<b>seusers</b> file, while set to <b>0</b> or missing, uses linux username as SELinux user.</li>
+    <li><b>AUTORELABEL</b> : If set to <b>0</b> and exist a file named <code>.autorelabel</code> in the <b>root</b> directory, on next reboot admin has to manually relabel the filesystem on the shell. If it is missing or set to <b>1</b> on next reboot if the file exits, all the files will be relabelled automatically (lengthy process). The file will be removed after reboot on both cases.
+        <div class="note">
+            The file <code>.autorelabel</code> is useful when resetting the password of an account (without going on to <code>permissive</code> mode) where the security context of the file <code>/etc/shadow</code> will be changed. So inorder to relabel any files this file can be useful. But relabelling the entire filesystem is a time consuming process.
+        </div>
+    </li>
+</ul>
+<h4>/etc/selinux/semanage.conf</h4>
+<a href="https://selinuxproject.org/page/GlobalConfigurationFiles#.2Fetc.2Fselinux.2Fsemanage.conf_File">For details</a>
+
+<p style="color: red; font-size: large;">(To be continued...)</p>
 <p>
     All diagrams and examples are copied from <a href="https://selinuxproject.org" target="_blank" rel="noreferrer noopener">SELinux wiki</a>.
 </p>
